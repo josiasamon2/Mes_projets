@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f4">
+  <meta name="description" content="Vérifiez des adresses web et apprenez les premiers gestes pour protéger vos comptes contre le phishing.">
+  <title>Vigie — Vérifier un lien</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="site-header"><a class="brand" href="index.html"><span class="mark" aria-hidden="true">✓</span> Vigie</a><nav class="nav" aria-label="Navigation principale"><a aria-current="page" href="index.html">Vérifier un lien</a><a href="prevention.html">Éviter le piratage</a><a href="incident.html">Réagir au piratage</a></nav><span class="local"><span class="dot"></span> Analyse locale</span></header>
+    <main>
+      <div class="eyebrow">Un doute sur un lien ?</div>
+      <h1>Vérifiez avant de cliquer.</h1>
+      <p class="intro">Collez une adresse web pour repérer des signes fréquents d’hameçonnage. L’analyse se fait dans votre navigateur.</p>
+      <section class="panel" aria-label="Analyse d'un lien">
+        <form id="form"><label for="url">Adresse du site à vérifier</label><div class="inputrow"><input id="url" type="text" inputmode="url" autocomplete="url" placeholder="https://exemple.com" required><button type="submit">Analyser le lien</button></div><p class="hint">Ne collez pas de mot de passe ni de code reçu par SMS.</p></form>
+        <div id="result" aria-live="polite"></div>
+      </section>
+      <section class="how" aria-label="Conseils de sécurité"><article><b>Regardez le vrai domaine</b><p>Dans banque.exemple.com, le site appartient à exemple.com. Les mots placés avant ne prouvent rien.</p></article><article><b>Méfiez-vous de l’urgence</b><p>Un compte bloqué ou un paiement à confirmer peut servir à vous faire agir trop vite.</p></article><article><b>En cas de doute</b><p>Ouvrez le site depuis vos favoris ou tapez vous-même son adresse officielle.</p></article></section>
+    </main>
+    <footer>Vigie donne une estimation à partir de caractéristiques visibles de l’adresse. Un résultat rassurant ne garantit pas qu’un site est sûr. Cette version ne visite pas le site et ne vérifie pas les bases de données de menaces.</footer>
+  </div>
+  <script>
+    const form = document.querySelector('#form');
+    const output = document.querySelector('#result');
+    const knownBrands = ['google','microsoft','apple','paypal','amazon','facebook','instagram','netflix','whatsapp','orange','mtn','visa','mastercard','linkedin','dropbox','icloud'];
+    const shorteners = ['bit.ly','tinyurl.com','t.co','goo.gl','ow.ly','cutt.ly','is.gd','shorturl.at'];
+    const suspiciousWords = ['login','signin','verify','verification','secure','account','update','password','payment','wallet','claim','bonus','urgent','confirm','auth'];
+    const unusualTlds = ['zip','top','xyz','click','loan','cam','icu','rest','country','gq'];
+    const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    function levenshtein(a,b){const row=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){let prev=row[0];row[0]=i;for(let j=1;j<=b.length;j++){const old=row[j];row[j]=Math.min(row[j]+1,row[j-1]+1,prev+(a[i-1]===b[j-1]?0:1));prev=old}}return row[b.length]}
+    function inspect(raw){
+      const checks=[];let risk=0;
+      const add=(title,detail,points=0)=>{checks.push({title,detail,points});risk+=points};
+      let value=raw.trim();if(!/^[a-z][a-z\d+.-]*:\/\//i.test(value))value='https://'+value;
+      let u;try{u=new URL(value)}catch{return {error:'Cette adresse ne semble pas valide. Vérifiez qu’elle est complète.'}}
+      const host=u.hostname.toLowerCase().replace(/\.$/,'');
+      if(!['http:','https:'].includes(u.protocol))add('Protocole inhabituel','Le lien n’utilise pas HTTP ou HTTPS.',3);
+      else if(u.protocol==='https:')add('Connexion HTTPS','Le lien utilise HTTPS. Cela chiffre la connexion, mais ne prouve pas que le site est légitime.');
+      else add('Pas de HTTPS','La connexion n’est pas chiffrée. Évitez d’y saisir des informations personnelles.',2);
+      if(u.username||u.password)add('Identifiants intégrés au lien','Le lien contient des informations avant le nom de domaine, une technique parfois utilisée pour tromper.',3);
+      else add('Aucun identifiant intégré','Aucun nom d’utilisateur ou mot de passe n’est intégré à l’adresse.');
+      const ip=/^(\d{1,3}\.){3}\d{1,3}$/.test(host)||host.includes(':');
+      if(ip)add('Adresse IP utilisée','Le site est indiqué par une adresse numérique plutôt qu’un nom de domaine habituel.',2);
+      const labels=host.split('.');
+      if(host.includes('xn--'))add('Nom international encodé','Le domaine contient un encodage qui peut masquer des caractères ressemblant à d’autres lettres.',3);
+      const base=labels.length>=2?labels[labels.length-2]:host;
+      const near=knownBrands.find(b=>base!==b&&base.length>3&&levenshtein(base,b)<=1);
+      if(near)add('Ressemblance avec une marque connue',`Le nom « ${base} » ressemble à « ${near} », sans être identique. Vérifiez l’adresse officielle.`,3);
+      else add('Pas de marque imitée détectée','Aucune ressemblance évidente avec les marques courantes intégrées à cette vérification.');
+      const brandInSubdomain=labels.slice(0,-2).find(label=>knownBrands.includes(label));
+      if(brandInSubdomain)add('Marque placée dans un sous-domaine',`« ${brandInSubdomain} » apparaît avant le domaine principal « ${base} ». Le site est contrôlé par le domaine placé juste avant l’extension.`,3);
+      if(labels.length>=5)add('Beaucoup de sous-domaines',`L’adresse comporte ${labels.length-2} niveaux avant le domaine principal. Cela peut rendre le vrai domaine moins visible.`,1);
+      if(host.length>45)add('Domaine inhabituellement long',`Le nom de domaine comporte ${host.length} caractères, ce qui peut rendre sa lecture difficile.`,1);
+      const tld=labels.at(-1);
+      if(unusualTlds.includes(tld))add('Extension parfois utilisée dans des liens à risque',`L’extension « .${tld} » mérite une vérification supplémentaire. Une extension seule ne permet pas de conclure.`,1);
+      if((labels.slice(0,-1).join('').match(/\d/g)||[]).length>=4)add('Plusieurs chiffres dans le domaine','Le nom de domaine contient plusieurs chiffres. Vérifiez l’orthographe du site officiel.',1);
+      const keyword=suspiciousWords.find(w=>`${host}${u.pathname}`.toLowerCase().includes(w));
+      if(keyword)add('Terme souvent associé aux pièges',`Le mot « ${keyword} » apparaît dans l’adresse. Ce n’est pas une preuve, mais restez prudent.`,1);
+      const port=u.port&& !['80','443'].includes(u.port);
+      if(port)add('Port web inhabituel',`L’adresse utilise le port ${u.port}, rarement nécessaire pour un site grand public.`,1);
+      if(shorteners.includes(host))add('Lien raccourci','La destination réelle est masquée. N’ouvrez le lien que si vous connaissez son expéditeur.',2);
+      else add('Pas de raccourcisseur connu','Le domaine n’est pas dans la courte liste de raccourcisseurs courants.');
+      if((u.pathname+u.search).length>100)add('Adresse très longue','Une adresse particulièrement longue peut cacher sa destination ou des paramètres inattendus.',1);
+      return {u,host,checks,risk:Math.min(10,risk)};
+    }
+    form.addEventListener('submit',e=>{e.preventDefault();const data=inspect(document.querySelector('#url').value);output.style.display='block';if(data.error){output.innerHTML=`<div class="summary danger"><span class="symbol">!</span><div><h2>Adresse à corriger</h2><p>${data.error}</p></div></div>`;return}
+      const level=data.risk>=6?'danger':data.risk>=3?'warn':'';
+      const title=level==='danger'?'Plusieurs signaux de risque':level==='warn'?'Quelques points appellent à la prudence':'Peu de signaux suspects repérés';
+      const desc=level==='danger'?'Évitez de vous connecter ou de saisir des informations sur ce site. Vérifiez par un canal officiel.':level==='warn'?'Ne saisissez aucune information sensible avant d’avoir vérifié l’adresse par un canal officiel.':'Cette vérification rapide n’a pas repéré beaucoup de signaux. Elle ne peut pas confirmer que le site est sûr.';
+      const cls=level==='danger'?'danger':level==='warn'?'warn':'';
+      output.innerHTML=`<div class="summary ${cls}"><span class="symbol">${level==='danger'?'!':level==='warn'?'?':'✓'}</span><div><h2>${title}</h2><p>${desc}</p></div></div><div class="scoreline"><span>Signaux observés</span><span>${data.risk}/10</span></div><div class="track"><div class="fill ${cls}" style="width:${data.risk*10}%"></div></div><ul class="checks">${data.checks.map(c=>`<li><span class="badge ${c.points?'bad':'good'}">${c.points?'!':'✓'}</span><div><strong>${escapeHtml(c.title)}</strong><small>${escapeHtml(c.detail)}</small></div></li>`).join('')}</ul><p class="note">Domaine analysé : <strong>${escapeHtml(data.host)}</strong>. Aucun contenu du site n’a été chargé.</p>`;
+    });
+  </script>
+</body>
+</html>
