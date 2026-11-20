@@ -1,6 +1,6 @@
-# Vigie
+# Vigie.com
 
-Vigie est un petit site en français consacré à la prévention du phishing et au piratage de comptes. Il fonctionne sans installation ni dépendance.
+Vigie.com est un petit site en français consacré à la prévention du phishing et au piratage de comptes. Il fonctionne sans installation ni dépendance.
 
 ## Les trois pages
 
