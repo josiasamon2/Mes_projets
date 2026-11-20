@@ -56,5 +56,5 @@
     .callout strong { display:block; margin-bottom:4px }
     .page-link { display:inline-flex; margin-top:8px; font-weight:700; color:var(--green); text-decoration:none }
     .page-link:hover { text-decoration:underline }
-    @media(max-width:760px){.site-header{margin-bottom:42px}.nav{order:3;flex-basis:100%;overflow-x:auto;flex-wrap:nowrap}.nav a{white-space:nowrap}.site-header .local{margin-left:auto}}
+    @media(max-width:760px){.site-header{margin-bottom:42px}.nav{order:3;flex-basis:100%;overflow:visible;flex-wrap:wrap}.nav a{white-space:nowrap}.site-header .local{margin-left:auto}}
     @media(max-width:600px){.page-card{padding:18px}}
